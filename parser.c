@@ -2,18 +2,103 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
 #include <libgen.h>
 #include <libxml/tree.h>
-#include <libxml/parser.h>
 #include <libxml/xmlreader.h>
-	#include <libxml/debugXML.h>
 #include <string.h>
 
-const char *build_dir = "builds";
+static void find_userinput_tmp_sys(xmlNode *a_node, FILE *fd);
+static void find_userinput_sys(xmlNode *a_node, FILE *fd);
+
 xmlChar *cur_file = NULL;
+enum SYS_TYPE { TMP_SYS, SYS } sys_type;
 
 static void
-find_userinput(xmlNode *a_node, FILE *fd)
+find_addr_or_scrn_sys(xmlNode *a_node, FILE *fd)
+{
+	xmlNode *cur_node = NULL;
+	xmlChar *content = NULL;
+	xmlChar *attr = NULL;
+
+	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
+                if (cur_node->type == XML_ENTITY_REF_NODE)
+                    return;
+		if (cur_node->type == XML_ELEMENT_NODE) {
+                        if (!xmlStrcmp(cur_node->name, (const xmlChar *)"address")) {
+				content = xmlNodeGetContent(cur_node);
+				//fprintf(fd, "get %s\n", content);
+				fprintf(fd, "unpack %s\n\n", content);
+				xmlFree(content);
+			} else if (!xmlStrcmp(cur_node->name, (const xmlChar *)"screen")) {
+				attr = xmlGetProp(cur_node, "role");
+				if (attr && !xmlStrcmp(attr, (const xmlChar *)"nodump")) {
+					xmlFree(attr);
+					attr = NULL;
+					continue;
+				}
+				find_userinput_sys(cur_node->children, fd);
+				xmlFree(attr);
+				attr = NULL;
+			}
+		}
+		find_addr_or_scrn_sys(cur_node->children, fd);
+	}
+}
+
+static void find_userinput_sys(xmlNode *a_node, FILE *fd)
+{
+	xmlNode *cur_node = NULL;
+	xmlChar *content = NULL;
+	xmlChar *attr = NULL;
+
+	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type == XML_ENTITY_REF_NODE)
+			return;
+		if (cur_node->type == XML_ELEMENT_NODE) {
+			if (!xmlStrcmp(cur_node->name, (const xmlChar *)"userinput")) {
+				attr = xmlGetProp(cur_node, "remap");
+				if (!xmlStrcmp(attr, (const xmlChar *)"pre")) {
+					content = xmlNodeGetContent(cur_node);
+					//fprintf(fd, "#pre\n");
+					fprintf(fd, "%s\n", content, cur_file);
+					//fprintf(fd, "#endpre\n\n");
+				} else if (!xmlStrcmp(attr, (const xmlChar *)"configure")) {
+					content = xmlNodeGetContent(cur_node);
+					//fprintf(fd, "#conf\n");
+					fprintf(fd, "%s\n", content, cur_file);
+					//fprintf(fd, "#endconf\n\n");
+				} else if (!xmlStrcmp(attr, (const xmlChar *)"make")) {
+					content = xmlNodeGetContent(cur_node);
+					//fprintf(fd, "#make\n");
+					fprintf(fd, "%s\n", content, cur_file);
+					//fprintf(fd, "#endmake\n\n");
+				} else if (!xmlStrcmp(attr, (const xmlChar *)"install")) {
+					content = xmlNodeGetContent(cur_node);
+					//fprintf(fd, "#install\n");
+					fprintf(fd, "%s\n", content, cur_file);
+					//fprintf(fd, "#endinstall\n\n");
+				} else if (!xmlStrcmp(attr, (const xmlChar *)"locale-full")) {
+					content = xmlNodeGetContent(cur_node);
+					//fprintf(fd, "#locale\n");
+					fprintf(fd, "%s\n", content, cur_file);
+					//fprintf(fd, "#endlocale\n\n");
+				} else {
+					content = xmlNodeGetContent(cur_node);
+					//fprintf(fd, "#userinput\n");
+					fprintf(fd, "%s\n", content, cur_file);
+					//fprintf(fd, "#enduserinput\n\n");
+				}
+				xmlFree(content);
+				xmlFree(attr);
+			}
+		}
+	}
+}
+
+static void
+find_scrn_or_adr_tmp_sys(xmlNode *a_node, FILE *fd)
 {
 	xmlNode *cur_node = NULL;
 	xmlChar *content = NULL;
@@ -23,38 +108,66 @@ find_userinput(xmlNode *a_node, FILE *fd)
                 if (cur_node->type == XML_ENTITY_REF_NODE)
                     return;
 		if (cur_node->type == XML_ELEMENT_NODE) {
-                        if (!xmlStrcmp(cur_node->name, (const xmlChar *)"productname")) {
+			//printf("node: %s\n", cur_node->name);
+			if (!xmlStrcmp(cur_node->name, (const xmlChar *)"address")) {
 				content = xmlNodeGetContent(cur_node);
 				//fprintf(fd, "get %s\n", content);
 				fprintf(fd, "unpack %s\n\n", content);
 				xmlFree(content);
-			} else if (!xmlStrcmp(cur_node->name, (const xmlChar *)"userinput")) {
+			} else if (!xmlStrcmp(cur_node->name, (const xmlChar *)"screen")) {
+				find_userinput_tmp_sys(cur_node->children, fd);
+			}
+		}
+		find_scrn_or_adr_tmp_sys(cur_node->children, fd);
+	}
+}
+
+static void
+find_userinput_tmp_sys(xmlNode *a_node, FILE *fd)
+{
+	xmlNode *cur_node = NULL;
+	xmlChar *content = NULL;
+	xmlChar *remap = NULL;
+	
+	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type == XML_ENTITY_REF_NODE)
+			return;
+		if (cur_node->type == XML_ELEMENT_NODE) {
+			//printf("node: %s\n", cur_node->name);
+			if (!xmlStrcmp(cur_node->name, (const xmlChar *)"userinput")) {
 				remap = xmlGetProp(cur_node, "remap");
 				if (!xmlStrcmp(remap, (const xmlChar *)"pre")) {
 					content = xmlNodeGetContent(cur_node);
-					fprintf(fd, "#pre\n");
+					//fprintf(fd, "#pre\n");
 					fprintf(fd, "%s\n", content, cur_file);
-					fprintf(fd, "#endpre\n\n");
+					//fprintf(fd, "#endpre\n\n");
 				} else if (!xmlStrcmp(remap, (const xmlChar *)"configure")) {
 					content = xmlNodeGetContent(cur_node);
-					fprintf(fd, "#conf\n");
+					//fprintf(fd, "#conf\n");
 					fprintf(fd, "%s\n", content, cur_file);
-					fprintf(fd, "#endconf\n\n");
+					//fprintf(fd, "#endconf\n\n");
 				} else if (!xmlStrcmp(remap, (const xmlChar *)"make")) {
 					content = xmlNodeGetContent(cur_node);
-					fprintf(fd, "#make\n");
+					//fprintf(fd, "#make\n");
 					fprintf(fd, "%s\n", content, cur_file);
-					fprintf(fd, "#endmake\n\n");
+					//fprintf(fd, "#endmake\n\n");
 				} else if (!xmlStrcmp(remap, (const xmlChar *)"install")) {
 					content = xmlNodeGetContent(cur_node);
-					fprintf(fd, "#install\n");
+					//fprintf(fd, "#install\n");
 					fprintf(fd, "%s\n", content, cur_file);
-					fprintf(fd, "#endinstall\n\n");
+					//fprintf(fd, "#endinstall\n\n");
+				} else if (!xmlStrcmp(remap, (const xmlChar *)"test")) {
+					fprintf(fd, "#test skipped\n\n");
+				} else {
+					content = xmlNodeGetContent(cur_node);
+					//fprintf(fd, "#userinput\n");
+					fprintf(fd, "%s\n", content, cur_file);
+					//fprintf(fd, "#enduserinput\n\n");
 				}
 				xmlFree(content);
 			}
 		}
-		find_userinput(cur_node->children, fd);
+		//find_userinput_tmp_sys(cur_node->children, fd);
 	}
 }
 
@@ -72,8 +185,12 @@ build_script(char *filename, FILE *fd)
 	}
 
 	root_element = xmlDocGetRootElement(doc);
-
-	find_userinput(root_element, fd);
+	
+	if (sys_type == TMP_SYS) {
+		find_scrn_or_adr_tmp_sys(root_element, fd);
+	} else {
+		find_addr_or_scrn_sys(root_element, fd);
+	}
 
 	xmlFreeDoc(doc);
 	xmlCleanupParser();
@@ -82,7 +199,7 @@ build_script(char *filename, FILE *fd)
 }
 
 static void
-find_include(xmlNode *a_node, xmlChar *book_dir)
+find_include(xmlNode *a_node, xmlChar *book_dir, char *build_dir)
 {
 	xmlNode *cur_node = NULL;
 	xmlChar *href = NULL;
@@ -101,7 +218,7 @@ find_include(xmlNode *a_node, xmlChar *book_dir)
 			if (!xmlStrcmp(cur_node->name, (const xmlChar *)"include")) {
 				href = xmlGetProp(cur_node, "href");
 				cur_file = href;
-				printf("Parsing %s ...\n", href);
+				printf("\e[40m\e[1;37m --- \e[1;32mParsing \e[1;37m%s --- \e[m \n", href);
 
 				book_dir_len = xmlStrlen(book_dir);
 				href_len = xmlStrlen(href);
@@ -128,7 +245,9 @@ find_include(xmlNode *a_node, xmlChar *book_dir)
 				
 				fd = fopen(build_file, "w");
 				fprintf(fd, "#!/bin/sh\n\n");
+				fprintf(fd, "clean_sources\n");
 				build_script(filename, fd);
+				fprintf(fd, "clean_sources\n");
 				fclose(fd);
 				chmod(build_file, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 				
@@ -138,31 +257,46 @@ find_include(xmlNode *a_node, xmlChar *book_dir)
 				href = NULL;
 			}
 		}
-		find_include(cur_node->children, book_dir);
+		find_include(cur_node->children, book_dir, build_dir);
 	}
 }
 
 int
 main (int argc, char **argv)
 {
-	xmlTextReaderPtr reader = NULL;
-	int ret = 0;
 	xmlDocPtr doc = NULL;
 	xmlNode *root_element = NULL;
-	const xmlChar *URL = NULL;
-
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s FILE\n", argv[0]);
+	
+	if (argc != 4) {
+		fprintf(stderr, "Usage: %s FILE DIST_DIR SYS_TYPE\n", argv[0]);
 		return 1;
 	}
 	
-	mkdir(build_dir, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	// make directory of build files
+	if (mkdir(argv[2], S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) || (! EEXIST)) {
+		fprintf(stderr, "%s: Can't create directory %s\n", argv[0], argv[2]);
+//		fprintf(stderr, "errno: %d\n", errno);
+		return 1;
+	}
+	
+	switch (*argv[3]) {
+		case 't':
+			sys_type = TMP_SYS;
+			break;
+		case 's':
+			sys_type = SYS;
+			break;
+		default:
+			fprintf(stderr, "Could not recognize SYS_TYPE!\n");
+			return 1;
+	}
+	
 
 	LIBXML_TEST_VERSION
 
 	doc = xmlReadFile(argv[1], NULL, 0);
 	if (doc == NULL) {
-		fprintf(stderr, "Failed to create reader...\n");
+		fprintf(stderr, "%s: Failed to create reader...\n", argv[0]);
 		return 1;
 	}
 
@@ -170,7 +304,7 @@ main (int argc, char **argv)
 
 	root_element = xmlDocGetRootElement(doc);
 	
-	find_include(root_element, (xmlChar *)book_dir);
+	find_include(root_element, (xmlChar *)book_dir, argv[2]);
 
 	xmlFreeDoc(doc);
 	xmlCleanupParser();

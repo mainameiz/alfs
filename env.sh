@@ -1,13 +1,7 @@
 #!/bin/sh
 
-
-if [ -f ./settings.sh ]; then
-	source ./settings.sh
-else
-	echo "Could not found settings.sh..."
-	echo "Terminating..."
-	exit 1
-fi
+source ./etc/settings.sh
+source ./etc/colors.sh
 
 set +h
 umask 022
