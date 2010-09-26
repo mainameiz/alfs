@@ -6,7 +6,7 @@ unpack()
 		case $tarball in
 		*.tar.bz2)
 			tar xjf $tarball
-			dir=`ls $tarball | sed -e "s|.tar.bz2||g"`
+			dir="${tarball%.tar.bz2}"
 			if [ $VERBOSE ]; then
 				echo "cd \"$dir\""
 			fi
@@ -14,7 +14,7 @@ unpack()
 			;;
 		*.tar.gz)
 			tar xzf $tarball
-			dir=`ls $tarball | sed -e "s|.tar.gz||g"`
+			dir="${tarball%.tar.gz}"
 			if [ $VERBOSE ]; then
 				echo "cd \"$dir\""
 			fi
@@ -27,14 +27,13 @@ unpack()
 	else
 		echo "'$tarball' is not a valid file!"
 	fi
-	#echo $tarball
 }
 
 clean_sources()
 {
 	cd $LFS/sources
 	for file in *; do
-		if [[ -d $file ]]; then
+		if [ -d $file ]; then
 			echo "Remove $file directory..."
 			rm -rf $file
 		fi

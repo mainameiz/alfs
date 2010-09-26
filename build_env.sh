@@ -130,8 +130,8 @@ echo
 make parser # Build Parser
 echo
 
-rm -r $LFS/alfs/build_tmp_sys/
-rm -r $LFS/alfs/build_sys/
+rm -rf $LFS/alfs/build_tmp_sys/
+#rm -r $LFS/alfs/build_sys/
 echo -e "${bblack}${cyan}Parsing Temporary System Scripts${normal}"
 ./parser $BOOK_DIR/chapter05/chapter05.xml $LFS/alfs/build_tmp_sys/   t
 #echo -e "${bblack}${cyan}Parsing LFS System Scripts${normal}"
