@@ -10,7 +10,7 @@ unpack()
 			if [ $VERBOSE ]; then
 				echo "cd \"$dir\""
 			fi
-			cd $dir
+			cd "$dir"
 			;;
 		*.tar.gz)
 			tar xzf $tarball
@@ -18,7 +18,7 @@ unpack()
 			if [ $VERBOSE ]; then
 				echo "cd \"$dir\""
 			fi
-			cd $dir
+			cd "$dir"
 			;;
 		#*.bz2)          bunzip2 $tarball;;
 		#*.zip)          unzip $tarball;;
@@ -31,11 +31,11 @@ unpack()
 
 clean_sources()
 {
-	cd $LFS/sources
+	cd "$LFS"/sources
 	for file in *; do
 		if [ -d $file ]; then
 			echo "Remove $file directory..."
-			rm -rf $file
+			rm -rf "$file"
 		fi
 	done
 }
