@@ -135,6 +135,12 @@ for URL in $FILE_LIST; do
 		fi
 	else
 		echo -e "${bblack}${lblue}$FILE ${yellow}does not exist!${normal}"
+			
+		if [[ -z $(command -v wget) ]]; then
+			echo -e "${bblack}${red}ERROR: ${cyan}Could not found wget!${normal}"
+			exit 1
+		fi
+		
 		cd "$LFS"/sources
 		
 			wget "$URL"
