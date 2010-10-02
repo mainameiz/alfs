@@ -11,7 +11,7 @@ usage()
 	echo "  -h, --help		Give this help"
 }
 
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
 	case $1 in
 	-f|--fetch-book) FETCH_BOOK="y";; # fetch or update existing book
 	-h|--help) usage; exit 0;;
@@ -20,16 +20,48 @@ while [ $# -gt 0 ]; do
 	shift
 done
 
-if [ ! -w "$LFS" ]; then
+OLD_PWD=$(pwd)
+case $FETCH_BOOK in
+	"y")
+		if [[ -z $(command -v svn) ]]; then
+			echo -e "${bblack}${red}ERROR: ${cyan}Could not found SVN!${normal}"
+			exit 1
+		fi
+		
+		if [[ ! -z "$BOOK_DIR" && -d "$BOOK_DIR" ]]; then
+			echo -e "${bblack}${cyan}Updating book...${normal}"
+			cd "$BOOK_DIR"
+			svn update
+			cd "$OLD_PWD"
+		else
+			echo "Fetch book..."
+			svn co svn://svn.linuxfromscratch.org/LFS/trunk/BOOK/
+			BOOK_DIR="BOOK"
+		fi
+	;;
+	*)
+		if [[ -z "$BOOK_DIR" ]]; then
+			echo "${bblack}${red}ERROR: ${cyan}Set BOOK_DIR variable in settings.sh or use \"-f\" flag to fetch book!${normal}"
+			exit 1
+		fi
+		
+		if [[ ! -d "$BOOK_DIR" ]]; then
+			echo -e "${bblack}${red}ERROR: ${lblue}\"$BOOK_DIR\" ${cyan}does not exist or not a directory!${normal}"
+			exit 1
+		fi
+	;;
+esac
+
+
+if [[ ! -w "$LFS" ]]; then
 	echo -e "${red}You don't have a write permition to $LFS (LFS directory)!${normal}"
 	exit 1
 fi
 
 echo -e "${yellow}${bblack}Making ${lblue}\"$LFS/tools\"${yellow} directory...${normal}"
-mkdir -vp "$LFS"/tools
+mkdir -vp "$LFS/tools"
 
-if [ -h "/tools" ]; then
-	#echo "/tools symlink already exists..."
+if [[ -h "/tools" ]]; then
 	TMP_LINK=`readlink -f /tools`
 	if [[ "x$TMP_LINK" != "x$LFS/tools" ]]; then
 		echo -e "\"/tools\" symlink does not symlink to $LFS/tools"
@@ -50,37 +82,14 @@ else
 fi
 
 echo -e "${yellow}${bblack}Making ${lblue}\"$LFS/sources\"${yellow} directory${normal}"
-mkdir -vp "$LFS"/sources
+mkdir -vp "$LFS/sources"
 echo
 
-mkdir -vp "$LFS"/alfs/{etc,logs/{tmp_sys,sys}}
+mkdir -vp "$LFS/alfs/etc"
+mkdir -vp "$LOG_TMP_SYS_DIR"
+mkdir -vp "$LOG_SYS_DIR"
 
-OLD_PWD=`pwd`
-case $FETCH_BOOK in
-	"y")
-		if [[ ! -z "$BOOK_DIR" && -d "$BOOK_DIR" ]]; then
-			echo -e "${bblack}${cyan}Updating book...${normal}"
-			cd $BOOK_DIR
-			svn update
-			cd $OLD_PWD
-		else
-			echo "Fetch book..."
-			svn co svn://svn.linuxfromscratch.org/LFS/trunk/BOOK/
-			BOOK_DIR="BOOK"
-		fi
-	;;
-	*)
-		if [[ -z "$BOOK_DIR" ]]; then
-			echo "Set BOOK_DIR variable in settings.sh or use \"-f\" flag to fetch book!"
-			exit 1
-		fi
-		
-		if [[ ! -d "$BOOK_DIR" ]]; then
-			echo -e "\"$BOOK_DIR\" does not exist or not a directory!"
-			exit 1
-		fi
-	;;
-esac
+
 echo
 
 cd "$BOOK_DIR"
@@ -89,25 +98,38 @@ mv wget-list "$OLD_PWD/"
 cd "$OLD_PWD"
 
 # Important!
-# This commands will remove any files and directories
+# These commands will remove any files and directories
 # which does not exist in "wget-list"
 # --- DO NOT PUT YOUR IMPORTANT FILES IN "$LFS/SOURCES"! ---
+echo -e "${bblack}${yellow}Cleaning ${lblue}$LFS/sources ${yellow}directory${normal}"
 for file in "$LFS"/sources/*; do
-    file_name=`basename "$file"`
-    found=`grep "$file_name" wget-list`
+    file_name=$(basename "$file")
+    found=$(grep "$file_name" wget-list)
     if [[ -z "$found" ]]; then
-        echo "Remove $file..."
+        echo -e "${bblack}${yellow}Remove ${lgreen}$file${normal}"
         rm -rf "$file"
     fi
 done
 clean_sources
+echo -e "${bblack}${lblue}$LFS/sources ${yellow}cleaned${normal}"
 cd "$OLD_PWD"
+
+if [[ $CLEAN_LOGS ]]; then
+	echo -e "${bblack}${yellow}Cleaning logs directories:"
+	echo -e "${lblue}$LOG_TMP_SYS_DIR"
+	echo -e "$LOG_SYS_DIR${normal}"
+	rm -rf "$LOG_TMP_SYS_DIR"/*.log
+	rm -rf "$LOG_SYS_DIR"/*.log
+	echo -e "${bblack}${yellow}Logs cleaned${normal}"
+fi
 
 FILE_LIST=`cat wget-list`
 for URL in $FILE_LIST; do
-	FILE=`echo "$URL" | sed -e"s@\(http\|ftp\)\://.*\/@@"`
-	if [ -e "$LFS"/sources/"$FILE" ]; then
-		if [ $VERBOSE ]; then
+	FILE=${URL##http}
+	FILE=${FILE##ftp}
+	FILE=${FILE##*\/}
+	if [[ -e "$LFS"/sources/"$FILE" ]]; then
+		if [[ $VERBOSE ]]; then
 			echo "$FILE exists!"
 		fi
 	else
@@ -131,7 +153,7 @@ make parser # Build Parser
 echo
 
 rm -rf "$LFS"/alfs/build_tmp_sys/
-#rm -r "$LFS"/alfs/build_sys/
+rm -rf "$LFS"/alfs/build_sys/
 echo -e "${bblack}${cyan}Parsing Temporary System Scripts${normal}"
 ./parser "$BOOK_DIR"/chapter05/chapter05.xml "$LFS"/alfs/build_tmp_sys/   t
 #echo -e "${bblack}${cyan}Parsing LFS System Scripts${normal}"
@@ -139,4 +161,4 @@ echo -e "${bblack}${cyan}Parsing Temporary System Scripts${normal}"
 
 
 
-rm wget-list
+rm wget-list parser

@@ -89,6 +89,7 @@ find_scrn_or_adr_tmp_sys(xmlNode *a_node, FILE *fd)
 {
 	xmlNode *cur_node = NULL;
 	xmlChar *content = NULL;
+	xmlChar *attr = NULL;
 
 	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
                 if (cur_node->type == XML_ENTITY_REF_NODE)
@@ -96,10 +97,18 @@ find_scrn_or_adr_tmp_sys(xmlNode *a_node, FILE *fd)
 		if (cur_node->type == XML_ELEMENT_NODE) {
 			if (!xmlStrcmp(cur_node->name, (const xmlChar *)"address")) {
 				content = xmlNodeGetContent(cur_node);
-				fprintf(fd, "unpack %s\n\n", content);
+				fprintf(fd, "unpack %s\n", content);
 				xmlFree(content);
 			} else if (!xmlStrcmp(cur_node->name, (const xmlChar *)"screen")) {
+				attr = xmlGetProp(cur_node, (const xmlChar *)"role");
+				if (attr && !xmlStrcmp(attr, (const xmlChar *)"nodump")) {
+					xmlFree(attr);
+					attr = NULL;
+					continue;
+				}
 				find_userinput_tmp_sys(cur_node->children, fd);
+				xmlFree(attr);
+				attr = NULL;
 			}
 		}
 		find_scrn_or_adr_tmp_sys(cur_node->children, fd);
@@ -121,21 +130,65 @@ find_userinput_tmp_sys(xmlNode *a_node, FILE *fd)
 				remap = xmlGetProp(cur_node, (const xmlChar *)"remap");
 				if (!xmlStrcmp(remap, (const xmlChar *)"pre")) {
 					content = xmlNodeGetContent(cur_node);
+					fprintf(fd, "\ntail -f \"$PRE_LOG\" &\n");
+					fprintf(fd, "PID=`ps u | grep \"tail -f $PRE_LOG\" | grep -v \"grep\" | cut -d' ' -f2`\n");
+					fprintf(fd, "exec  1>> \"$PRE_LOG\"\n");
+					fprintf(fd, "exec  2>> \"$PRE_LOG\"\n");
 					fprintf(fd, "%s\n", content);
+					/*fprintf(fd, "echo \"kill $PID\"\n");*/
+					fprintf(fd, "kill \"$PID\"\n");
+					fprintf(fd, "exec 1>&7\n");
+					fprintf(fd, "exec 8>&2\n");
 				} else if (!xmlStrcmp(remap, (const xmlChar *)"configure")) {
 					content = xmlNodeGetContent(cur_node);
+					fprintf(fd, "\ntail -f \"$CONF_LOG\" &\n");
+					fprintf(fd, "PID=`ps u | grep \"tail -f $CONF_LOG\" | grep -v \"grep\" | cut -d' ' -f2`\n");
+					fprintf(fd, "exec 1>> \"$CONF_LOG\"\n");
+					fprintf(fd, "exec 2>> \"$CONF_LOG\"\n");
 					fprintf(fd, "%s\n", content);
+					/*fprintf(fd, "echo \"kill $PID\"\n");*/
+					fprintf(fd, "kill \"$PID\"\n");
+					fprintf(fd, "exec 1>&7\n");
+					fprintf(fd, "exec 8>&2\n");
 				} else if (!xmlStrcmp(remap, (const xmlChar *)"make")) {
 					content = xmlNodeGetContent(cur_node);
+					fprintf(fd, "\ntail -f \"$MAKE_LOG\" &\n");
+					fprintf(fd, "PID=`ps u | grep \"tail -f $MAKE_LOG\" | grep -v \"grep\" | cut -d' ' -f2`\n");
+					fprintf(fd, "exec 1>> \"$MAKE_LOG\"\n");
+					fprintf(fd, "exec 2>> \"$MAKE_LOG\"\n");
 					fprintf(fd, "%s\n", content);
+					/*fprintf(fd, "echo \"kill $PID\"\n");*/
+					fprintf(fd, "kill \"$PID\"\n");
+					fprintf(fd, "exec 1>&7\n");
+					fprintf(fd, "exec 8>&2\n");
 				} else if (!xmlStrcmp(remap, (const xmlChar *)"install")) {
 					content = xmlNodeGetContent(cur_node);
+					fprintf(fd, "\ntail -f \"$INST_LOG\" &\n");
+					fprintf(fd, "PID=`ps u | grep \"tail -f $INST_LOG\" | grep -v \"grep\" | cut -d' ' -f2`\n");
+					fprintf(fd, "exec 1>> \"$INST_LOG\"\n");
+					fprintf(fd, "exec 2>> \"$INST_LOG\"\n");
 					fprintf(fd, "%s\n", content);
+					/*fprintf(fd, "echo \"kill $PID\"\n");*/
+					fprintf(fd, "kill \"$PID\"\n");
+					fprintf(fd, "exec 1>&7\n");
+					fprintf(fd, "exec 8>&2\n");
 				} else if (!xmlStrcmp(remap, (const xmlChar *)"test")) {
+					/*fprintf(fd, "\nexec 1>> \"$TEST_LOG\"\n");*/
+					/*fprintf(fd, "exec 2>> \"$TEST_LOG\"\n");*/
 					fprintf(fd, "#test skipped\n\n");
+					/*fprintf(fd, "exec 1>&7\n");*/
+					/*fprintf(fd, "exec 8>&2\n");*/
 				} else {
 					content = xmlNodeGetContent(cur_node);
+					fprintf(fd, "\ntail -f \"$LOG\" &\n");
+					fprintf(fd, "PID=`ps u | grep \"tail -f $LOG\" | grep -v \"grep\" | cut -d' ' -f2`\n");
+					fprintf(fd, "exec 1>> \"$LOG\"\n");
+					fprintf(fd, "exec 2>> \"$LOG\"\n");
 					fprintf(fd, "%s\n", content);
+					/*fprintf(fd, "echo \"kill $PID\"\n");*/
+					fprintf(fd, "kill \"$PID\"\n");
+					fprintf(fd, "exec 1>&7\n");
+					fprintf(fd, "exec 8>&2\n");
 				}
 				xmlFree(content);
 			}
@@ -188,7 +241,7 @@ find_include(xmlNode *a_node, char *book_dir, char *build_dir)
 	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
 			if (!xmlStrcmp(cur_node->name, (const xmlChar *)"include")) {
-				href = xmlGetProp(cur_node, (const xmlChar *)"href");
+				href = (char *)xmlGetProp(cur_node, (const xmlChar *)"href");
 				printf("\e[40m\e[1;37m --- \e[1;32mParsing \e[1;37m%s --- \e[m \n", href);
 
 				book_dir_len = strlen(book_dir);
@@ -215,10 +268,10 @@ find_include(xmlNode *a_node, char *book_dir, char *build_dir)
 				strcat(build_file, ".sh");
 				
 				fd = fopen(build_file, "w");
-				fprintf(fd, "#!/bin/sh\n\n");
-				fprintf(fd, "clean_sources\n");
+				fprintf(fd, "#!/bin/bash\n\n");
+				fprintf(fd, "exec 7>&1\n");
+				fprintf(fd, "exec 8>&2\n\n");
 				build_script(filename, fd);
-				fprintf(fd, "clean_sources\n");
 				fclose(fd);
 				chmod(build_file, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 				
@@ -243,7 +296,7 @@ main (int argc, char **argv)
 		return 1;
 	}
 	
-	// make directory of build files
+	/* make directory of build files */
 	if (mkdir(argv[2], S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) || (! EEXIST)) {
 		fprintf(stderr, "%s: Can't create directory %s\n", argv[0], argv[2]);
 		return 1;

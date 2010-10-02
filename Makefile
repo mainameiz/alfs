@@ -2,7 +2,7 @@ all:
 	./build_env.sh -f
 
 parser: parser.c
-	gcc -Wall -o parser parser.c `xml2-config --libs --cflags`
+	gcc -Wall -ansi -o parser parser.c `xml2-config --libs --cflags`
 	
 clean:
 	rm -rf parser

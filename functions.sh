@@ -1,40 +1,56 @@
+# unpack tarball and prepare some shell variables
 unpack()
 {
-	tarball=`echo $1 | sed -e"s@\(http\|ftp\)\://.*\/@@"`
+	tarball=${1##http}
+	tarball=${tarball##ftp}
+	tarball=${tarball##*\/}
 
-	if [ -e $tarball ]; then
-		case $tarball in
+	echo -e "${bblack}${yellow}Unpacking ${lgreen}$tarball${normal}"
+
+	if [[ -e "$tarball" ]]; then
+		
+		LOG="$LOG_DIR/$tarball.log"
+		PRE_LOG="$LOG_DIR/$tarball_pre.log"
+		CONF_LOG="$LOG_DIR/$tarball_conf.log"
+		MAKE_LOG="$LOG_DIR/$tarball_make.log"
+		TEST_LOG="$LOG_DIR/$tarball_test.log"
+		INST_LOG="$LOG_DIR/$tarball_inst.log"
+		
+		case "$tarball" in
 		*.tar.bz2)
-			tar xjf $tarball
+			tar xjf "$tarball"
 			dir="${tarball%.tar.bz2}"
 			if [ $VERBOSE ]; then
-				echo "cd \"$dir\""
+				echo "cd \"$dir\"" >> "$LOG"
 			fi
 			cd "$dir"
 			;;
 		*.tar.gz)
-			tar xzf $tarball
+			tar xzf "$tarball"
 			dir="${tarball%.tar.gz}"
 			if [ $VERBOSE ]; then
-				echo "cd \"$dir\""
+				echo "cd \"$dir\"" >> "$LOG"
 			fi
 			cd "$dir"
 			;;
-		#*.bz2)          bunzip2 $tarball;;
-		#*.zip)          unzip $tarball;;
-		*)              echo "Don't know how to extract '$tarball'...";;
+		*)
+			echo "${red}Don't know how to extract '$tarball'${normal}" >> "$LOG"
+			exit 1
+			;;
 		esac
+		touch "$LOG" "$PRE_LOG" "$CONF_LOG" "$MAKE_LOG" "$TEST_LOG" "$INST_LOG"
+		echo -e "${bblack}${lgreen}$tarball ${yellow}unpacked${normal}"
 	else
-		echo "'$tarball' is not a valid file!"
+		echo -e "${red}'$tarball' is not a valid file!${normal}" >> "$LOG"
+		exit 1
 	fi
 }
 
 clean_sources()
 {
-	cd "$LFS"/sources
-	for file in *; do
-		if [ -d $file ]; then
-			echo "Remove $file directory..."
+	for file in "$LFS/sources/*"; do
+		if [ -d "$file" ]; then
+			echo -e "${bblack}${yellow}Remove ${lblue}$file ${yellow}directory${normal}"
 			rm -rf "$file"
 		fi
 	done
