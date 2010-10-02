@@ -54,11 +54,11 @@ esac
 
 
 if [[ ! -w "$LFS" ]]; then
-	echo -e "${red}You don't have a write permition to $LFS (LFS directory)!${normal}"
+	echo -e "${bblack}${red}You don't have a write permition to $LFS (LFS directory)!${normal}"
 	exit 1
 fi
 
-echo -e "${yellow}${bblack}Making ${lblue}\"$LFS/tools\"${yellow} directory...${normal}"
+echo -e "${bblack}${yellow}Making ${lblue}\"$LFS/tools\"${yellow} directory...${normal}"
 mkdir -vp "$LFS/tools"
 
 if [[ -h "/tools" ]]; then
@@ -67,16 +67,16 @@ if [[ -h "/tools" ]]; then
 		echo -e "\"/tools\" symlink does not symlink to $LFS/tools"
 		su root -c"rm -v /tools; ln -sv $LFS/tools /"
 		if [ $? != 0 ]; then
-			echo -e "${red}You need root password to continue or make /tools symlink to $LFS/tools yourself${normal}"
+			echo -e "${bblack}${red}You need root password to continue or make /tools symlink to $LFS/tools yourself${normal}"
 			exit 1;
 		fi
 	fi
 else
-	echo -e "${yellow}${bblack}Making ${lblue}\"/tools\"${yellow} symlink${normal}"
+	echo -e "${bblack}${yellow}Making ${lblue}\"/tools\"${yellow} symlink${normal}"
 	echo "Give root password:"
 	su root -c"ln -sv \"$LFS\"/tools /"
 	if [ $? != 0 ]; then
-		echo -e "${red}You need root password to continue or make /tools symlink to $LFS/tools yourself${normal}"
+		echo -e "${bblack}${red}You need root password to continue or make /tools symlink to $LFS/tools yourself${normal}"
 		exit 1;
 	fi
 fi
@@ -93,8 +93,8 @@ mkdir -vp "$LOG_SYS_DIR"
 echo
 
 cd "$BOOK_DIR"
-make BASEDIR="." wget-list
-mv wget-list "$OLD_PWD/"
+#make BASEDIR="." wget-list
+#mv wget-list "$OLD_PWD/"
 cd "$OLD_PWD"
 
 # Important!
@@ -122,20 +122,53 @@ if [[ $CLEAN_LOGS ]]; then
 	rm -rf "$LOG_SYS_DIR"/*.log
 	echo -e "${bblack}${yellow}Logs cleaned${normal}"
 fi
+echo
 
 FILE_LIST=`cat wget-list`
 for URL in $FILE_LIST; do
 	FILE=${URL##http}
 	FILE=${FILE##ftp}
 	FILE=${FILE##*\/}
-	if [[ -e "$LFS"/sources/"$FILE" ]]; then
+	if [[ -e "$LFS/sources/$FILE" ]]; then
 		if [[ $VERBOSE ]]; then
-			echo "$FILE exists!"
+			echo -e "${bblack}${lblue}$FILE ${yellow}exists!${normal}"
 		fi
 	else
-		echo "$FILE does not exist!"
+		echo -e "${bblack}${lblue}$FILE ${yellow}does not exist!${normal}"
 		cd "$LFS"/sources
-		wget "$URL"
+		
+			wget "$URL"
+			if [[ -e "$LFS/sources/$FILE" ]]; then
+				break
+			else
+				
+				echo -e "${bblack}${red}Warning! Failed to download file. You can't continue without this file. Try again?${normal}"
+				while true; do
+					read ANSWER
+					case $ANSWER in
+						y|yes)
+							wget "$URL"
+							if [[ -e "$LFS/sources/$FILE" ]]; then
+								break
+							else
+								echo -e "${bblack}${red}Warning! Failed to download file. You can't continue without this file. Try again?${normal}"
+								continue
+							fi
+						;;
+						n|no)
+							echo -e "${bblack}${red}To continue, you can...${normal}"
+							echo -e "${bblack}${red}1) download this file and paste its into $LFS/sources yourself or ...${normal}"
+							echo -e "${bblack}${red}2) try to execute this script again${normal}"
+							exit 1
+						;;
+						*)
+						echo -e "${bblack}${white}Please, type [${lred}yes${white}/${lgreen}no${white}] or [${lred}y${white}/${lgreen}n${white}]${normal}"
+						;;
+					esac
+				done
+				
+			fi
+		
 		cd "$OLD_PWD"
 	fi
 done
@@ -161,4 +194,4 @@ echo -e "${bblack}${cyan}Parsing Temporary System Scripts${normal}"
 
 
 
-rm wget-list parser
+#rm wget-list parser
