@@ -2,11 +2,11 @@
 
 source ./etc/colors.sh
 source ./etc/settings.sh
-LOG_DIR="$LOG_TMP_SYS_DIR"
+LOG_DIR="$LOG_SYS_DIR"
 source ./etc/functions.sh
 source ./etc/env.sh
 
-BUILDS_DIR="$LFS/alfs/build_tmp_sys"
+BUILDS_DIR="$LFS/alfs/build_sys"
 if [[ ! -d "$BUILDS_DIR" ]]; then
 	echo -e "${red}Could not found \"$BUILDS_DIR\" directory${normal}"
 	exit 1

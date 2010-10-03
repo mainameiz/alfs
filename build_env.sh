@@ -34,7 +34,7 @@ case $FETCH_BOOK in
 			svn update
 			cd "$OLD_PWD"
 		else
-			echo "Fetch book..."
+			echo -e "Fetch book..."
 			svn co svn://svn.linuxfromscratch.org/LFS/trunk/BOOK/
 			BOOK_DIR="BOOK"
 		fi
@@ -102,6 +102,7 @@ cd "$OLD_PWD"
 # which does not exist in "wget-list"
 # --- DO NOT PUT YOUR IMPORTANT FILES IN "$LFS/SOURCES"! ---
 echo -e "${bblack}${yellow}Cleaning ${lblue}$LFS/sources ${yellow}directory${normal}"
+clean_sources
 for file in "$LFS"/sources/*; do
     file_name=$(basename "$file")
     found=$(grep "$file_name" wget-list)
@@ -110,7 +111,6 @@ for file in "$LFS"/sources/*; do
         rm -rf "$file"
     fi
 done
-clean_sources
 echo -e "${bblack}${lblue}$LFS/sources ${yellow}cleaned${normal}"
 cd "$OLD_PWD"
 
