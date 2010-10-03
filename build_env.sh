@@ -93,8 +93,8 @@ mkdir -vp "$LOG_SYS_DIR"
 echo
 
 cd "$BOOK_DIR"
-#make BASEDIR="." wget-list
-#mv wget-list "$OLD_PWD/"
+make BASEDIR="." wget-list
+mv wget-list "$OLD_PWD/"
 cd "$OLD_PWD"
 
 # Important!
@@ -141,13 +141,10 @@ for URL in $FILE_LIST; do
 			exit 1
 		fi
 		
-		cd "$LFS"/sources
+		cd "$LFS/sources"
 		
 			wget "$URL"
-			if [[ -e "$LFS/sources/$FILE" ]]; then
-				break
-			else
-				
+			if [[ ! -e "$LFS/sources/$FILE" ]]; then
 				echo -e "${bblack}${red}Warning! Failed to download file. You can't continue without this file. Try again?${normal}"
 				while true; do
 					read ANSWER
@@ -168,16 +165,16 @@ for URL in $FILE_LIST; do
 							exit 1
 						;;
 						*)
-						echo -e "${bblack}${white}Please, type [${lred}yes${white}/${lgreen}no${white}] or [${lred}y${white}/${lgreen}n${white}]${normal}"
+						echo -e -n "${bblack}${white}Please, type [${lred}yes${white}/${lgreen}no${white}] or [${lred}y${white}/${lgreen}n${white}]${normal}"
 						;;
 					esac
 				done
-				
 			fi
 		
 		cd "$OLD_PWD"
 	fi
 done
+unset ANSWER
 # ---------------------------
 
 cp settings.sh "$LFS"/alfs/etc/
@@ -194,10 +191,21 @@ echo
 rm -rf "$LFS"/alfs/build_tmp_sys/
 rm -rf "$LFS"/alfs/build_sys/
 echo -e "${bblack}${cyan}Parsing Temporary System Scripts${normal}"
-./parser "$BOOK_DIR"/chapter05/chapter05.xml "$LFS"/alfs/build_tmp_sys/   t
-#echo -e "${bblack}${cyan}Parsing LFS System Scripts${normal}"
-#./parser "$BOOK_DIR"/chapter06/chapter06.xml "$LFS"/alfs/build_sys/       s
+./parser "$BOOK_DIR"/chapter05/chapter05.xml "$LFS/alfs/build_tmp_sys/"   t
+echo -e "${bblack}${cyan}Parsing LFS System Scripts${normal}"
+./parser "$BOOK_DIR"/chapter06/chapter06.xml "$LFS/alfs/build_sys/"       s
 
+# --- Patching
+# 08-glibc
+sed -i -e "s@<xxx>@$TIMEZONE@" "$LFS/alfs/build_sys/08-glibc.xml.sh"
+# 12-gmp
+if [[ ! -z $ABI ]]; then
+	sed -i -e "s@./configure@ABI=$ABI ./configure@" "$LFS/alfs/build_sys/12-gmp.xml.sh"
+fi
+# 42-groff
+sed -i -e "s@<paper_size>@$PAGE@" "$LFS/alfs/build_sys/42-groff.xml.sh"
+#
+rm -rf "$LFS/alfs/build_sys/6*"
+# ---
 
-
-#rm wget-list parser
+rm wget-list parser

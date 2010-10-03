@@ -272,6 +272,8 @@ find_include(xmlNode *a_node, char *book_dir, char *build_dir)
 				fprintf(fd, "exec 7>&1\n");
 				fprintf(fd, "exec 8>&2\n\n");
 				build_script(filename, fd);
+				fprintf(fd, "exec 1>&7\n");
+				fprintf(fd, "exec 8>&2\n");
 				fclose(fd);
 				chmod(build_file, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 				
