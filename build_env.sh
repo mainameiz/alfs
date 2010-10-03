@@ -54,7 +54,7 @@ esac
 
 
 if [[ ! -w "$LFS" ]]; then
-	echo -e "${bblack}${red}You don't have a write permition to $LFS (LFS directory)!${normal}"
+	echo -e "${bblack}${red}You don't have a write permission to $LFS (LFS directory)!${normal}"
 	exit 1
 fi
 
@@ -191,9 +191,9 @@ echo
 rm -rf "$LFS"/alfs/build_tmp_sys/
 rm -rf "$LFS"/alfs/build_sys/
 echo -e "${bblack}${cyan}Parsing Temporary System Scripts${normal}"
-./parser "$BOOK_DIR"/chapter05/chapter05.xml "$LFS/alfs/build_tmp_sys/"   t
+./parser "$BOOK_DIR"/chapter05/chapter05.xml "$LFS/alfs/build_tmp_sys/"
 echo -e "${bblack}${cyan}Parsing LFS System Scripts${normal}"
-./parser "$BOOK_DIR"/chapter06/chapter06.xml "$LFS/alfs/build_sys/"       s
+./parser "$BOOK_DIR"/chapter06/chapter06.xml "$LFS/alfs/build_sys/"
 
 # --- Patching
 # 08-glibc

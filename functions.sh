@@ -10,11 +10,6 @@ unpack()
 	if [[ -e "$tarball" ]]; then
 		
 		LOG="$LOG_DIR/$tarball.log"
-		PRE_LOG="$LOG_DIR/$tarball_pre.log"
-		CONF_LOG="$LOG_DIR/$tarball_conf.log"
-		MAKE_LOG="$LOG_DIR/$tarball_make.log"
-		TEST_LOG="$LOG_DIR/$tarball_test.log"
-		INST_LOG="$LOG_DIR/$tarball_inst.log"
 		
 		case "$tarball" in
 		*.tar.bz2)
@@ -38,7 +33,7 @@ unpack()
 			exit 1
 			;;
 		esac
-		touch "$LOG" "$PRE_LOG" "$CONF_LOG" "$MAKE_LOG" "$TEST_LOG" "$INST_LOG"
+		touch "$LOG"
 		echo -e "${bblack}${lgreen}$tarball ${yellow}unpacked${normal}"
 	else
 		echo -e "${red}'$tarball' is not a valid file!${normal}" >> "$LOG"
@@ -48,7 +43,7 @@ unpack()
 
 clean_sources()
 {
-	for file in "$LFS/sources/*"; do
+	for file in "$LFS"/sources/*; do
 		if [ -d "$file" ]; then
 			echo -e "${bblack}${yellow}Remove ${lblue}$file ${yellow}directory${normal}"
 			rm -rf "$file"
