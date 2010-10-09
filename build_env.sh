@@ -195,4 +195,4 @@ echo -e "${bblack}${cyan}Parsing LFS System Scripts${normal}"
 
 source "$path"/fixes.sh
 
-#rm wget-list parser
+rm wget-list parser

@@ -1,9 +1,11 @@
 #!/bin/sh
 
-source ./etc/colors.sh
-source ./etc/settings.sh
-source ./etc/functions.sh
-source ./etc/env.sh
+path=$(dirname $0)
+
+source "$path"/etc/colors.sh
+source "$path"/etc/settings.sh
+source "$path"/etc/functions.sh
+source "$path"/etc/env.sh
 clean_sources
 clean_logs
 exec 7>&1
@@ -86,3 +88,5 @@ for build in "$BUILDS_DIR"/*; do
 	cd "$LFS/sources"
 	clean_sources
 done
+
+echo -e "Well done =)"
