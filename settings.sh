@@ -1,6 +1,6 @@
-# Директория с книгой. Можно оставить пустой, тогда книгу будет скачана в папку "BOOK"
+# Directory of lfs-book. If this variable is empty then lfs-book will be downloaded to "BOOK" directory
 BOOK_DIR="$path"/"BOOK"
-# Корень будущей системы
+# LFS root directory
 LFS="/home/predator/lfsdir"
 VERBOSE="y"
 LOG_TMP_SYS_DIR="$LFS/alfs/logs/tmp_sys"
