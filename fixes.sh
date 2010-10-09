@@ -1,4 +1,11 @@
+# To Build Temporary System
+
+# 10-tcl
+sed -i -e"s@cd unix@cd tcl8.5.9/unix@" "$LFS/alfs/build_tmp_sys/10-tcl.xml.sh"
+
+
 # To Install Basic System Software
+
 # 08-glibc
 sed -i -e "s@<xxx>@$TIMEZONE@" "$LFS/alfs/build_sys/08-glibc.xml.sh"
 # 12-gmp

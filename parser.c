@@ -164,17 +164,7 @@ void find_include(xmlNode *a_node, char *book_dir, char *build_dir)
 				
 				fd = fopen(build_file, "w");
 				fprintf(fd, "#!/bin/bash\n\n");
-				/*fprintf(fd, "exec 7>&1\n");
-				fprintf(fd, "exec 8>&2\n");
-				fprintf(fd, "tail -f \"$LOG\" &\n");
-				fprintf(fd, "PID=$!\n");
-				fprintf(fd, "echo \"$PID \" >> \"$LOG_DIR\"/tails.pid\n");
-				fprintf(fd, "exec 1>> \"$LOG\"\n");
-				fprintf(fd, "exec 2>> \"$LOG\"\n");*/
 				build_script(filename, fd);
-				/*fprintf(fd, "kill \"$PID\"\n");
-				fprintf(fd, "exec 1>&7\n");
-				fprintf(fd, "exec 2>&8\n");*/
 				fclose(fd);
 				chmod(build_file, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 				

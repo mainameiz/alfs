@@ -89,4 +89,5 @@ for build in "$BUILDS_DIR"/*; do
 	clean_sources
 done
 
-echo -e "Well done =)"
+echo
+echo -e "${bbalck}${white}Well done =)${normal}"
