@@ -9,7 +9,7 @@ usage()
 }
 
 cmd_name=$(basename $0)
-path=$(dirname $0)
+path=$(readlink -f $(dirname $0))
 
 source "$path"/settings.sh	# Build Configuration
 source "$path"/functions.sh	# to clean sources
@@ -116,7 +116,6 @@ for file in "$LFS"/sources/*; do
     fi
 done
 echo -e "${bblack}${lblue}$LFS/sources ${yellow}cleaned${normal}"
-#cd "$path"
 
 clean_logs
 echo
