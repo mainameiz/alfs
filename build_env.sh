@@ -8,12 +8,14 @@ usage()
 {
 	echo "Usage: $0 [OPTION]"
 	echo "  -f, --fetch-book	Fetch book from svn"
+	echo "  -v, --verbose		Verbose output"
 	echo "  -h, --help		Give this help"
 }
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
 	-f|--fetch-book) FETCH_BOOK="y";; # fetch or update existing book
+	-v|--verbose) VERBOSE="y";; # verbose output
 	-h|--help) usage; exit 0;;
 	*) echo "$0 -- invalid option '$1'"; usage; exit 0;;
 	esac
@@ -62,7 +64,7 @@ echo -e "${bblack}${yellow}Making ${lblue}\"$LFS/tools\"${yellow} directory...${
 mkdir -vp "$LFS/tools"
 
 if [[ -h "/tools" ]]; then
-	TMP_LINK=`readlink -f /tools`
+	TMP_LINK=$(readlink -f /tools)
 	if [[ "x$TMP_LINK" != "x$LFS/tools" ]]; then
 		echo -e "\"/tools\" symlink does not symlink to $LFS/tools"
 		su root -c"rm -v /tools; ln -sv $LFS/tools /"
@@ -114,17 +116,10 @@ done
 echo -e "${bblack}${lblue}$LFS/sources ${yellow}cleaned${normal}"
 cd "$OLD_PWD"
 
-if [[ $CLEAN_LOGS ]]; then
-	echo -e "${bblack}${yellow}Cleaning logs directories:"
-	echo -e "${lblue}$LOG_TMP_SYS_DIR"
-	echo -e "$LOG_SYS_DIR${normal}"
-	rm -rf "$LOG_TMP_SYS_DIR"/*.log
-	rm -rf "$LOG_SYS_DIR"/*.log
-	echo -e "${bblack}${yellow}Logs cleaned${normal}"
-fi
+clean_logs
 echo
 
-FILE_LIST=`cat wget-list`
+FILE_LIST=$(cat wget-list)
 for URL in $FILE_LIST; do
 	FILE=${URL##http}
 	FILE=${FILE##ftp}
@@ -145,7 +140,7 @@ for URL in $FILE_LIST; do
 		
 			wget "$URL"
 			if [[ ! -e "$LFS/sources/$FILE" ]]; then
-				echo -e "${bblack}${red}Warning! Failed to download file. You can't continue without this file. Try again?${normal}"
+				echo -e -n "${bblack}${red}Warning! Failed to download '$FILE'. You can't continue without this file. Try again? ${white}[${lred}yes${white}/${lgreen}no${white}] ${normal}"
 				while true; do
 					read ANSWER
 					case $ANSWER in
@@ -154,7 +149,7 @@ for URL in $FILE_LIST; do
 							if [[ -e "$LFS/sources/$FILE" ]]; then
 								break
 							else
-								echo -e "${bblack}${red}Warning! Failed to download file. You can't continue without this file. Try again?${normal}"
+								echo -e -n "${bblack}${red}Warning! Failed to download '$FILE'. You can't continue without this file. Try again? ${white}[${lred}yes${white}/${lgreen}no${white}] ${normal}"
 								continue
 							fi
 						;;
@@ -165,7 +160,7 @@ for URL in $FILE_LIST; do
 							exit 1
 						;;
 						*)
-						echo -e -n "${bblack}${white}Please, type [${lred}yes${white}/${lgreen}no${white}] or [${lred}y${white}/${lgreen}n${white}]${normal}"
+						echo -e -n "${bblack}${white}Sorry, response '${cyan}$ANSWER${white}' not understood. [${lred}yes${white}/${lgreen}no${white}] ${normal}"
 						;;
 					esac
 				done
@@ -181,8 +176,8 @@ cp settings.sh "$LFS"/alfs/etc/
 cp functions.sh "$LFS"/alfs/etc/
 cp env.sh "$LFS"/alfs/etc/
 cp colors.sh "$LFS"/alfs/etc/
-cp build_tmp_sys.sh "$LFS"/alfs/
-cp build_sys.sh "$LFS"/alfs/
+cp build.sh "$LFS"/alfs/
+cp fresh.sh "$LFS"/alfs/
 
 echo
 make parser # Build Parser
@@ -191,9 +186,9 @@ echo
 rm -rf "$LFS"/alfs/build_tmp_sys/
 rm -rf "$LFS"/alfs/build_sys/
 echo -e "${bblack}${cyan}Parsing Temporary System Scripts${normal}"
-./parser "$BOOK_DIR"/chapter05/chapter05.xml "$LFS/alfs/build_tmp_sys/"
+./parser --verbose --input-file="$BOOK_DIR"/chapter05/chapter05.xml --output-dir="$LFS/alfs/build_tmp_sys/"
 echo -e "${bblack}${cyan}Parsing LFS System Scripts${normal}"
-./parser "$BOOK_DIR"/chapter06/chapter06.xml "$LFS/alfs/build_sys/"
+./parser --verbose --include-testing --input-file="$BOOK_DIR"/chapter06/chapter06.xml --output-dir="$LFS/alfs/build_sys/"
 
 # --- Patching
 # 08-glibc

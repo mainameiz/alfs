@@ -8,11 +8,35 @@
 #include <libxml/tree.h>
 #include <libxml/xmlreader.h>
 #include <string.h>
+#include <getopt.h>
 
+static char *cmd_name;
+
+void find_scrn_or_addr(xmlNode *a_node, FILE *fd);
 void find_userinput(xmlNode *a_node, FILE *fd);
+int  build_script(char *filename, FILE *fd);
+void find_include(xmlNode *a_node, char *book_dir, char *build_dir);
+void display_usage(void);
 
-void
-find_scrn_or_addr(xmlNode *a_node, FILE *fd)
+struct global_args_t {
+	char *input_file_name;
+	char *output_dir;
+	int testing;
+	int verbosity;
+} global_args;
+
+static const char *opt_string = "f:d:tvh?";
+
+static const struct option long_opts[] = {
+	{ "input-file", required_argument, NULL, 'f' },
+	{ "output-dir", required_argument, NULL, 'd' },
+	{ "include-testing", no_argument, NULL, 't' },
+	{ "verbose", no_argument, NULL, 'v' },
+	{ "help", no_argument, NULL, 'h' },
+	{ NULL, no_argument, NULL, 0 }
+};
+
+void find_scrn_or_addr(xmlNode *a_node, FILE *fd)
 {
 	xmlNode *cur_node = NULL;
 	xmlChar *content = NULL;
@@ -42,8 +66,7 @@ find_scrn_or_addr(xmlNode *a_node, FILE *fd)
 	}
 }
 
-void
-find_userinput(xmlNode *a_node, FILE *fd)
+void find_userinput(xmlNode *a_node, FILE *fd)
 {
 	xmlNode *cur_node = NULL;
 	xmlChar *content = NULL;
@@ -55,65 +78,16 @@ find_userinput(xmlNode *a_node, FILE *fd)
 		if (cur_node->type == XML_ELEMENT_NODE) {
 			if (!xmlStrcmp(cur_node->name, (const xmlChar *)"userinput")) {
 				remap = xmlGetProp(cur_node, (const xmlChar *)"remap");
-				if (!xmlStrcmp(remap, (const xmlChar *)"pre")) {
-					content = xmlNodeGetContent(cur_node);
-					/*fprintf(fd, "\ntail -f \"$PRE_LOG\" &\n");*/
-					/*fprintf(fd, "PID=$!\n");*/
-					/*fprintf(fd, "exec  1>> \"$PRE_LOG\"\n");*/
-					/*fprintf(fd, "exec  2>> \"$PRE_LOG\"\n");*/
-					fprintf(fd, "%s\n", content);
-					/*fprintf(fd, "kill \"$PID\"\n");*/
-					/*fprintf(fd, "exec 1>&7\n");*/
-					/*fprintf(fd, "exec 2>&8\n");*/
-				} else if (!xmlStrcmp(remap, (const xmlChar *)"configure")) {
-					content = xmlNodeGetContent(cur_node);
-					/*fprintf(fd, "\ntail -f \"$CONF_LOG\" &\n");*/
-					/*fprintf(fd, "PID=$!\n");*/
-					/*fprintf(fd, "exec 1>> \"$CONF_LOG\"\n");*/
-					/*fprintf(fd, "exec 2>> \"$CONF_LOG\"\n");*/
-					fprintf(fd, "%s\n", content);
-					/*fprintf(fd, "kill \"$PID\"\n");*/
-					/*fprintf(fd, "exec 1>&7\n");*/
-					/*fprintf(fd, "exec 2>&8\n");*/
-				} else if (!xmlStrcmp(remap, (const xmlChar *)"make")) {
-					content = xmlNodeGetContent(cur_node);
-					/*fprintf(fd, "\ntail -f \"$MAKE_LOG\" &\n");*/
-					/*fprintf(fd, "PID=$!\n");*/
-					/*fprintf(fd, "exec 1>> \"$MAKE_LOG\"\n");*/
-					/*fprintf(fd, "exec 2>> \"$MAKE_LOG\"\n");*/
-					fprintf(fd, "%s\n", content);
-					/*fprintf(fd, "kill \"$PID\"\n");*/
-					/*fprintf(fd, "exec 1>&7\n");*/
-					/*fprintf(fd, "exec 2>&8\n");*/
-				} else if (!xmlStrcmp(remap, (const xmlChar *)"install")) {
-					content = xmlNodeGetContent(cur_node);
-					/*fprintf(fd, "\ntail -f \"$INST_LOG\" &\n");*/
-					/*fprintf(fd, "PID=$!\n");*/
-					/*fprintf(fd, "exec 1>> \"$INST_LOG\"\n");*/
-					/*fprintf(fd, "exec 2>> \"$INST_LOG\"\n");*/
-					fprintf(fd, "%s\n", content);
-					/*fprintf(fd, "kill \"$PID\"\n");*/
-					/*fprintf(fd, "exec 1>&7\n");*/
-					/*fprintf(fd, "exec 2>&8\n");*/
-				} else if (!xmlStrcmp(remap, (const xmlChar *)"test")) {
-					/*fprintf(fd, "\nexec 1>> \"$TEST_LOG\"\n");*/
-					/*fprintf(fd, "exec 2>> \"$TEST_LOG\"\n");*/
-					fprintf(fd, "#test skipped\n\n");
-					/*fprintf(fd, "exec 1>&7\n");*/
-					/*fprintf(fd, "exec 2>&8\n");*/
-				} else if (!xmlStrcmp(remap, (const xmlChar *)"locale-full")) {
-					content = xmlNodeGetContent(cur_node);
-					fprintf(fd, "%s\n", content);
+				if (!xmlStrcmp(remap, (const xmlChar *)"test")) {
+					if (global_args.testing > 0) {
+						content = xmlNodeGetContent(cur_node);
+						fprintf(fd, "%s\n", content);
+					} else {
+						fprintf(fd, "# tests was being skipped\n");
+					}
 				} else {
 					content = xmlNodeGetContent(cur_node);
-					/*fprintf(fd, "\ntail -f \"$LOG\" &\n");*/
-					/*fprintf(fd, "PID=$!\n");*/
-					/*fprintf(fd, "exec 1>> \"$LOG\"\n");*/
-					/*fprintf(fd, "exec 2>> \"$LOG\"\n");*/
 					fprintf(fd, "%s\n", content);
-					/*fprintf(fd, "kill \"$PID\"\n");*/
-					/*fprintf(fd, "exec 1>&7\n");*/
-					/*fprintf(fd, "exec 2>&8\n");*/
 				}
 				xmlFree(content);
 			}
@@ -121,8 +95,7 @@ find_userinput(xmlNode *a_node, FILE *fd)
 	}
 }
 
-int
-build_script(char *filename, FILE *fd)
+int build_script(char *filename, FILE *fd)
 {
 	xmlDocPtr doc = NULL;
 	xmlNode *root_element = NULL;
@@ -130,8 +103,8 @@ build_script(char *filename, FILE *fd)
 	doc = xmlReadFile(filename, NULL, XML_PARSE_DTDATTR | XML_PARSE_DTDLOAD);
 
 	if (doc == NULL) {
-		fprintf(stderr, "#Failed to parse %s\n", filename);
-		return 1;
+		fprintf(stderr, "%s: Failed to parse %s\n", cmd_name, filename);
+		exit(EXIT_FAILURE);;
 	}
 
 	root_element = xmlDocGetRootElement(doc);
@@ -144,8 +117,7 @@ build_script(char *filename, FILE *fd)
 	return 0;
 }
 
-void
-find_include(xmlNode *a_node, char *book_dir, char *build_dir)
+void find_include(xmlNode *a_node, char *book_dir, char *build_dir)
 {
 	xmlNode *cur_node = NULL;
 	char *href = NULL;
@@ -163,7 +135,9 @@ find_include(xmlNode *a_node, char *book_dir, char *build_dir)
 		if (cur_node->type == XML_ELEMENT_NODE) {
 			if (!xmlStrcmp(cur_node->name, (const xmlChar *)"include")) {
 				href = (char *)xmlGetProp(cur_node, (const xmlChar *)"href");
-				printf("\e[40m\e[1;37m --- \e[1;32mParsing \e[1;37m%s --- \e[m \n", href);
+				if (global_args.verbosity > 0) {
+					printf(">>> Parsing %s\n", href);
+				}
 
 				book_dir_len = strlen(book_dir);
 				href_len = strlen(href);
@@ -190,16 +164,17 @@ find_include(xmlNode *a_node, char *book_dir, char *build_dir)
 				
 				fd = fopen(build_file, "w");
 				fprintf(fd, "#!/bin/bash\n\n");
-				fprintf(fd, "exec 7>&1\n");
+				/*fprintf(fd, "exec 7>&1\n");
 				fprintf(fd, "exec 8>&2\n");
 				fprintf(fd, "tail -f \"$LOG\" &\n");
 				fprintf(fd, "PID=$!\n");
+				fprintf(fd, "echo \"$PID \" >> \"$LOG_DIR\"/tails.pid\n");
 				fprintf(fd, "exec 1>> \"$LOG\"\n");
-				fprintf(fd, "exec 2>> \"$LOG\"\n");
+				fprintf(fd, "exec 2>> \"$LOG\"\n");*/
 				build_script(filename, fd);
-				fprintf(fd, "kill \"$PID\"\n");
+				/*fprintf(fd, "kill \"$PID\"\n");
 				fprintf(fd, "exec 1>&7\n");
-				fprintf(fd, "exec 2>&8\n");
+				fprintf(fd, "exec 2>&8\n");*/
 				fclose(fd);
 				chmod(build_file, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 				
@@ -218,35 +193,86 @@ main (int argc, char **argv)
 {
 	xmlDocPtr doc = NULL;
 	xmlNode *root_element = NULL;
-	
-	if (argc != 3) {
-		fprintf(stderr, "Usage: %s FILE DIST_DIR\n", argv[0]);
-		return 1;
+	int opt = 0;
+	int opt_index = 0;
+
+	global_args.input_file_name = NULL;
+	global_args.output_dir = NULL;
+	global_args.verbosity = 0;
+	global_args.testing = 0;
+
+	cmd_name = basename(argv[0]);
+
+	opt = getopt_long(argc, argv, opt_string, long_opts, &opt_index);
+	while (opt != -1) {
+		switch (opt) {
+			case 'f':
+				global_args.input_file_name = optarg;
+				break;
+			case 'd':
+				global_args.output_dir = optarg;
+				break;
+			case 't':
+				global_args.testing = 1;
+				break;
+			case 'v':
+				global_args.verbosity++;
+				break;
+			case 'h':
+			case '?':
+				display_usage();
+				break;
+			default:
+				break;
+		}
+		opt = getopt_long(argc, argv, opt_string, long_opts, &opt_index);
 	}
-	
+
+	if (global_args.output_dir == NULL || global_args.input_file_name == NULL) {
+		display_usage();
+	}
+
 	/* make directory of build files */
-	if (mkdir(argv[2], S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) || (! EEXIST)) {
-		fprintf(stderr, "%s: Can't create directory %s\n", argv[0], argv[2]);
-		return 1;
+	if (mkdir(global_args.output_dir, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) || (! EEXIST)) {
+		fprintf(stderr, "%s: Can't create output directory %s\n",
+			basename(argv[0]),
+			global_args.output_dir);
+		exit(EXIT_FAILURE);
 	}
-	
 
 	LIBXML_TEST_VERSION
 
-	doc = xmlReadFile(argv[1], NULL, 0);
+	doc = xmlReadFile(global_args.input_file_name, NULL, 0);
 	if (doc == NULL) {
-		fprintf(stderr, "%s: Failed to create reader...\n", argv[0]);
-		return 1;
+		fprintf(stderr, "%s: Failed to read index file...\n", basename(argv[0]));
+		exit(EXIT_FAILURE);;
 	}
 
-	char *book_dir = dirname(argv[1]);
+	char *book_dir = dirname(global_args.input_file_name);
 
 	root_element = xmlDocGetRootElement(doc);
-	
-	find_include(root_element, book_dir, argv[2]);
+
+	find_include(root_element, book_dir, global_args.output_dir);
 
 	xmlFreeDoc(doc);
 	xmlCleanupParser();
 
-	return 0;
+	exit(EXIT_SUCCESS);
+}
+
+void display_usage(void)
+{
+	printf(
+"Usage: %s [OPTION]... INDEX_FILE DIST_DIR\n\n\
+  -f, --input-file=FILE\n\
+            input file\n\
+  -d, --output-dir=DIR\n\
+            output directory\n\
+  -t, --include-testing\n\
+            include testing phase\n\
+  -v, --verbose\n\
+            print a message for each parsed file\n\
+  -h, -?, --help\n\
+            display this help and exit\n", cmd_name);
+	exit(EXIT_FAILURE);
 }
