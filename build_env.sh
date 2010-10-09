@@ -1,28 +1,30 @@
 #!/bin/sh
 
-source ./settings.sh	# Build Configuration
-source ./functions.sh	# to clean sources
-source ./colors.sh
-
 usage()
 {
-	echo "Usage: $0 [OPTION]"
+	echo "Usage: $cmd_name [OPTION]..."
 	echo "  -f, --fetch-book	Fetch book from svn"
 	echo "  -v, --verbose		Verbose output"
 	echo "  -h, --help		Give this help"
 }
+
+cmd_name=$(basename $0)
+path=$(dirname $0)
+
+source "$path"/settings.sh	# Build Configuration
+source "$path"/functions.sh	# to clean sources
+source "$path"/colors.sh
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
 	-f|--fetch-book) FETCH_BOOK="y";; # fetch or update existing book
 	-v|--verbose) VERBOSE="y";; # verbose output
 	-h|--help) usage; exit 0;;
-	*) echo "$0 -- invalid option '$1'"; usage; exit 0;;
+	*) echo "$cmd_name -- invalid option '$1'"; usage; exit 0;;
 	esac
 	shift
 done
 
-OLD_PWD=$(pwd)
 case $FETCH_BOOK in
 	"y")
 		if [[ -z $(command -v svn) ]]; then
@@ -34,7 +36,7 @@ case $FETCH_BOOK in
 			echo -e "${bblack}${cyan}Updating book...${normal}"
 			cd "$BOOK_DIR"
 			svn update
-			cd "$OLD_PWD"
+			cd "$path"
 		else
 			echo -e "Fetch book..."
 			svn co svn://svn.linuxfromscratch.org/LFS/trunk/BOOK/
@@ -96,8 +98,8 @@ echo
 
 cd "$BOOK_DIR"
 make BASEDIR="." wget-list
-mv wget-list "$OLD_PWD/"
-cd "$OLD_PWD"
+mv wget-list "$path"
+cd "$path"
 
 # Important!
 # These commands will remove any files and directories
@@ -114,7 +116,7 @@ for file in "$LFS"/sources/*; do
     fi
 done
 echo -e "${bblack}${lblue}$LFS/sources ${yellow}cleaned${normal}"
-cd "$OLD_PWD"
+#cd "$path"
 
 clean_logs
 echo
@@ -166,41 +168,31 @@ for URL in $FILE_LIST; do
 				done
 			fi
 		
-		cd "$OLD_PWD"
+		cd "$path"
 	fi
 done
 unset ANSWER
 # ---------------------------
 
-cp settings.sh "$LFS"/alfs/etc/
-cp functions.sh "$LFS"/alfs/etc/
-cp env.sh "$LFS"/alfs/etc/
-cp colors.sh "$LFS"/alfs/etc/
-cp build.sh "$LFS"/alfs/
-cp fresh.sh "$LFS"/alfs/
+cp -v "$path"/settings.sh "$LFS"/alfs/etc/
+cp -v "$path"/functions.sh "$LFS"/alfs/etc/
+cp -v "$path"/env.sh "$LFS"/alfs/etc/
+cp -v "$path"/colors.sh "$LFS"/alfs/etc/
+cp -v "$path"/build.sh "$LFS"/alfs/
+cp -v "$path"/fresh.sh "$LFS"/alfs/
+cp -v "$path"/chroot.sh "$LFS"/alfs
 
 echo
-make parser # Build Parser
+make -C "$path" parser # Build Parser
 echo
 
 rm -rf "$LFS"/alfs/build_tmp_sys/
 rm -rf "$LFS"/alfs/build_sys/
 echo -e "${bblack}${cyan}Parsing Temporary System Scripts${normal}"
-./parser --verbose --input-file="$BOOK_DIR"/chapter05/chapter05.xml --output-dir="$LFS/alfs/build_tmp_sys/"
+"$path"/parser --verbose --input-file="$BOOK_DIR"/chapter05/chapter05.xml --output-dir="$LFS/alfs/build_tmp_sys/"
 echo -e "${bblack}${cyan}Parsing LFS System Scripts${normal}"
-./parser --verbose --include-testing --input-file="$BOOK_DIR"/chapter06/chapter06.xml --output-dir="$LFS/alfs/build_sys/"
+"$path"/parser --verbose --include-testing --input-file="$BOOK_DIR"/chapter06/chapter06.xml --output-dir="$LFS/alfs/build_sys/"
 
-# --- Patching
-# 08-glibc
-sed -i -e "s@<xxx>@$TIMEZONE@" "$LFS/alfs/build_sys/08-glibc.xml.sh"
-# 12-gmp
-if [[ ! -z $ABI ]]; then
-	sed -i -e "s@./configure@ABI=$ABI ./configure@" "$LFS/alfs/build_sys/12-gmp.xml.sh"
-fi
-# 42-groff
-sed -i -e "s@<paper_size>@$PAGE@" "$LFS/alfs/build_sys/42-groff.xml.sh"
-#
-rm -rf "$LFS/alfs/build_sys/6*"
-# ---
+source "$path"/fixes.sh
 
-rm wget-list parser
+#rm wget-list parser
